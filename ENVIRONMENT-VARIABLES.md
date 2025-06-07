@@ -68,10 +68,10 @@ ALLOWED_ORIGINS=https://your-app.vercel.app
 
 ```bash
 vercel env add NEXT_PUBLIC_BACKEND_URL production
-# Valor: https://your-backend.onrender.com
+# Valor: https://gpx-back.onrender.com
 
 vercel env add BACKEND_URL production
-# Valor: https://your-backend.onrender.com
+# Valor: https://gpx-back.onrender.com
 ```
 
 ### Render (Backend)
@@ -90,10 +90,10 @@ ALLOWED_ORIGINS=https://your-app.vercel.app
 
 ```
 Authorized JavaScript origins:
-- https://your-backend.onrender.com (NO el frontend)
+- https://gpx-back.onrender.com (NO el frontend)
 
 Authorized redirect URIs:
-- https://your-backend.onrender.com/api/oauth2/callback/google
+- https://gpx-back.onrender.com/api/oauth2/callback/google
 ```
 
 **Nota importante:** Los redirect URIs apuntan al BACKEND, no al frontend.
