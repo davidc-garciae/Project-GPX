@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import type { Transition, Variants } from 'motion/react';
-import { motion, useAnimation } from 'motion/react';
-import type { HTMLAttributes } from 'react';
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import type { Transition, Variants } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
+import type { HTMLAttributes } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 export interface HistoryIconHandle {
   startAnimation: () => void;
@@ -16,17 +16,17 @@ interface HistoryIconProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const arrowTransition: Transition = {
-  type: 'spring',
+  type: "spring",
   stiffness: 250,
   damping: 25,
 };
 
 const arrowVariants: Variants = {
   normal: {
-    rotate: '0deg',
+    rotate: "0deg",
   },
   animate: {
-    rotate: '-50deg',
+    rotate: "-50deg",
   },
 };
 
@@ -38,8 +38,8 @@ const handTransition: Transition = {
 const handVariants: Variants = {
   normal: {
     rotate: 0,
-    originX: '50%',
-    originY: '50%',
+    originX: "50%",
+    originY: "50%",
   },
   animate: {
     rotate: -360,
@@ -48,14 +48,14 @@ const handVariants: Variants = {
 
 const minuteHandTransition: Transition = {
   duration: 0.5,
-  ease: 'easeInOut',
+  ease: "easeInOut",
 };
 
 const minuteHandVariants: Variants = {
   normal: {
     rotate: 0,
-    originX: '50%',
-    originY: '50%',
+    originX: "50%",
+    originY: "50%",
   },
   animate: {
     rotate: -45,
@@ -70,15 +70,15 @@ const HistoryIcon = forwardRef<HistoryIconHandle, HistoryIconProps>(
     useImperativeHandle(ref, () => {
       isControlledRef.current = true;
       return {
-        startAnimation: () => controls.start('animate'),
-        stopAnimation: () => controls.start('normal'),
+        startAnimation: () => controls.start("animate"),
+        stopAnimation: () => controls.start("normal"),
       };
     });
 
     const handleMouseEnter = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isControlledRef.current) {
-          controls.start('animate');
+          controls.start("animate");
         } else {
           onMouseEnter?.(e);
         }
@@ -89,7 +89,7 @@ const HistoryIcon = forwardRef<HistoryIconHandle, HistoryIconProps>(
     const handleMouseLeave = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isControlledRef.current) {
-          controls.start('normal');
+          controls.start("normal");
         } else {
           onMouseLeave?.(e);
         }
@@ -149,6 +149,6 @@ const HistoryIcon = forwardRef<HistoryIconHandle, HistoryIconProps>(
   }
 );
 
-HistoryIcon.displayName = 'HistoryIcon';
+HistoryIcon.displayName = "HistoryIcon";
 
 export { HistoryIcon };

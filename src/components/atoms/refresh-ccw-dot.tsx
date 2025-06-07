@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { motion, useAnimation } from 'motion/react';
-import type { HTMLAttributes } from 'react';
-import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
-import { cn } from '@/lib/utils';
+import { motion, useAnimation } from "framer-motion";
+import type { HTMLAttributes } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 export interface RefreshCCWDotIconHandle {
   startAnimation: () => void;
@@ -24,14 +24,14 @@ const RefreshCCWDotIcon = forwardRef<
   useImperativeHandle(ref, () => {
     isControlledRef.current = true;
     return {
-      startAnimation: () => controls.start('animate'),
-      stopAnimation: () => controls.start('normal'),
+      startAnimation: () => controls.start("animate"),
+      stopAnimation: () => controls.start("normal"),
     };
   });
 
   const handleMouseEnter = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isControlledRef.current) controls.start('animate');
+      if (!isControlledRef.current) controls.start("animate");
       else onMouseEnter?.(e);
     },
     [controls, onMouseEnter]
@@ -39,7 +39,7 @@ const RefreshCCWDotIcon = forwardRef<
 
   const handleMouseLeave = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!isControlledRef.current) controls.start('normal');
+      if (!isControlledRef.current) controls.start("normal");
       else onMouseLeave?.(e);
     },
     [controls, onMouseLeave]
@@ -64,10 +64,10 @@ const RefreshCCWDotIcon = forwardRef<
         strokeLinejoin="round"
       >
         <motion.g
-          transition={{ type: 'spring', stiffness: 250, damping: 25 }}
+          transition={{ type: "spring", stiffness: 250, damping: 25 }}
           variants={{
-            normal: { rotate: '0deg' },
-            animate: { rotate: '-50deg' },
+            normal: { rotate: "0deg" },
+            animate: { rotate: "-50deg" },
           }}
           animate={controls}
         >
@@ -82,6 +82,6 @@ const RefreshCCWDotIcon = forwardRef<
   );
 });
 
-RefreshCCWDotIcon.displayName = 'RefreshCCWDotIcon';
+RefreshCCWDotIcon.displayName = "RefreshCCWDotIcon";
 
 export { RefreshCCWDotIcon };

@@ -268,11 +268,15 @@ export default function EventoPage() {
     params.set("tab", value);
     router.replace(`?${params.toString()}`, { scroll: false });
   };
-
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <h2 className="mb-4 text-2xl font-bold">Cargando evento...</h2>
+      <div className="flex flex-col items-center justify-center w-full min-h-screen text-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-b-2 rounded-full animate-spin border-primary"></div>
+          <h2 className="text-2xl font-bold text-muted-foreground">
+            Cargando evento...
+          </h2>
+        </div>
       </div>
     );
   }
@@ -300,7 +304,11 @@ export default function EventoPage() {
           </p>
         </div>
 
-        <Tabs value={tabParam} onValueChange={handleTabChange} className="w-full">
+        <Tabs
+          value={tabParam}
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
           {/* Header de tabs con botón de inscripción integrado */}
           <div className="flex items-center justify-between w-full mb-4">
             <TabsList className="grid w-auto grid-cols-3">

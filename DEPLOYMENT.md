@@ -64,9 +64,7 @@ Esta guía detalla el proceso completo para desplegar la aplicación GPX Rally M
    ```bash
    # .env.local
    NEXT_PUBLIC_BACKEND_URL=https://tu-backend.onrender.com
-   NEXT_PUBLIC_GOOGLE_CLIENT_ID=tu-google-client-id
-   NEXTAUTH_SECRET=tu-nextauth-secret-super-seguro
-   NEXTAUTH_URL=https://tu-app.vercel.app
+   BACKEND_URL=https://tu-backend.onrender.com
    ```
 
 2. **Verificar configuración**:
@@ -93,14 +91,8 @@ Esta guía detalla el proceso completo para desplegar la aplicación GPX Rally M
    vercel env add NEXT_PUBLIC_BACKEND_URL production
    # Valor: https://tu-backend.onrender.com
 
-   vercel env add NEXT_PUBLIC_GOOGLE_CLIENT_ID production
-   # Valor: tu-google-client-id
-
-   vercel env add NEXTAUTH_SECRET production
-   # Valor: tu-nextauth-secret-super-seguro
-
-   vercel env add NEXTAUTH_URL production
-   # Valor: https://tu-app.vercel.app
+   vercel env add BACKEND_URL production
+   # Valor: https://tu-backend.onrender.com
    ```
 
 3. **Desplegar**:
@@ -229,6 +221,29 @@ curl https://tu-backend.onrender.com/api/events/current
 ```
 
 ## 🐛 6. Troubleshooting Común
+
+### Error: No Next.js version detected
+
+```
+Error: No Next.js version detected. Make sure your package.json has "next" in either "dependencies" or "devDependencies"
+```
+
+**Solución**:
+
+1. Verificar que `package.json` tenga Next.js con versión específica:
+   ```json
+   {
+     "dependencies": {
+       "next": "^14.2.0" // No usar "latest"
+     }
+   }
+   ```
+2. Asegurar que no hay dependencias problemáticas como `"landing-page": "file:"`
+3. Reinstalar dependencias:
+   ```bash
+   rm -rf node_modules pnpm-lock.yaml
+   pnpm install
+   ```
 
 ### Error de CORS
 
