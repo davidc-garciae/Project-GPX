@@ -75,6 +75,21 @@ if (Test-Path "node_modules") {
     Write-Host "⚠️  node_modules no encontrado. Ejecutar: pnpm install" -ForegroundColor Yellow
 }
 
+# Auditoría de seguridad
+Write-Host "`n🔒 Ejecutando auditoría de seguridad..." -ForegroundColor Yellow
+try {
+    $auditResult = & pnpm audit --audit-level high 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Sin vulnerabilidades críticas encontradas" -ForegroundColor Green
+    } else {
+        Write-Host "⚠️  Se encontraron vulnerabilidades. Revisar:" -ForegroundColor Yellow
+        Write-Host $auditResult -ForegroundColor Yellow
+        Write-Host "💡 Ejecutar: pnpm audit --fix" -ForegroundColor Cyan
+    }
+} catch {
+    Write-Host "⚠️  Error ejecutando auditoría: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # Intentar build
 Write-Host "`n🏗️  Intentando build..." -ForegroundColor Yellow
 
