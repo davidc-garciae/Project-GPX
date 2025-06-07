@@ -1,10 +1,10 @@
 {
   "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "@gpx-rally-backend-url"
+    "NEXT_PUBLIC_BACKEND_URL": "https://gpx-back.onrender.com"
   },
   "build": {
     "env": {
-      "BACKEND_URL": "@gpx-rally-backend-url"
+      "BACKEND_URL": "https://gpx-back.onrender.com"
     }
   }
 }

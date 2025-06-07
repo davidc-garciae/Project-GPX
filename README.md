@@ -192,7 +192,7 @@ Esta es la configuración recomendada para el despliegue del sistema GPX Rally M
 
    ```bash
    vercel env add NEXT_PUBLIC_BACKEND_URL
-   # Valor: https://your-backend-app.onrender.com
+   # Valor: https://gpx-back.onrender.com
 
    vercel env add NEXT_PUBLIC_GOOGLE_CLIENT_ID
    # Valor: tu_google_client_id
@@ -252,7 +252,7 @@ public class CorsConfig {
 Configurar en Google Cloud Console:
 
 ```
-https://your-backend-app.onrender.com/api/oauth2/callback/google
+https://gpx-back.onrender.com/api/oauth2/callback/google
 https://your-app.vercel.app/api/auth/callback/google
 ```
 
@@ -382,11 +382,11 @@ Para soporte técnico o consultas:
 
 ```bash
 # Variables requeridas en Vercel
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-app.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://gpx-back.onrender.com
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
 NEXTAUTH_SECRET=your_nextauth_secret_key
 NEXTAUTH_URL=https://your-app.vercel.app
-BACKEND_URL=https://your-backend-app.onrender.com
+BACKEND_URL=https://gpx-back.onrender.com
 ```
 
 #### Comandos de Vercel CLI
@@ -432,7 +432,7 @@ JWT_EXPIRATION=86400000
 # Google OAuth2
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=https://your-backend-app.onrender.com/oauth2/callback/google
+GOOGLE_REDIRECT_URI=https://gpx-back.onrender.com/oauth2/callback/google
 
 # Configuración de aplicación
 SPRING_PROFILES_ACTIVE=prod

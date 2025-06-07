@@ -45,7 +45,7 @@ $backendUrl = [Environment]::GetEnvironmentVariable("NEXT_PUBLIC_BACKEND_URL")
 if ($backendUrl -like "*localhost*") {
     Write-Host "⚠️  ADVERTENCIA: Backend URL contiene 'localhost'" -ForegroundColor Yellow
     Write-Host "   Actual: $backendUrl" -ForegroundColor Yellow
-    Write-Host "   Debe ser: https://your-backend.onrender.com" -ForegroundColor Cyan
+    Write-Host "   Debe ser: https://gpx-back.onrender.com" -ForegroundColor Cyan
 }
 
 # Verificar archivos críticos

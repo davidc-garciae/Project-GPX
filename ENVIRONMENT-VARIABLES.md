@@ -5,8 +5,8 @@
 ### Variables Requeridas ✅
 
 ```bash
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-app.onrender.com
-BACKEND_URL=https://your-backend-app.onrender.com
+NEXT_PUBLIC_BACKEND_URL=https://gpx-back.onrender.com
+BACKEND_URL=https://gpx-back.onrender.com
 ```
 
 ### Variables NO Requeridas ❌
