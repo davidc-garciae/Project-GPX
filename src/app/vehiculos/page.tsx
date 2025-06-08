@@ -14,6 +14,7 @@ import {
 } from "@/components/organisms/basic/dialog";
 import { toast } from "sonner";
 import { Card } from "@/components/atoms/card";
+import { authFetch } from "@/utils/authFetch";
 
 export default function VehiculosPage() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function VehiculosPage() {
     if (!user?.id) return;
 
     try {
-      const response = await fetch(`/api/vehicles/byuser/${user.id}`);
+      const response = await authFetch(`/api/vehicles/byuser/${user.id}`);
       if (response.ok) {
         const data = await response.json();
         setVehicles(data);
@@ -57,7 +58,7 @@ export default function VehiculosPage() {
     if (!user?.id) return;
 
     try {
-      const response = await fetch("/api/vehicles", {
+      const response = await authFetch("/api/vehicles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +87,7 @@ export default function VehiculosPage() {
     if (!editingVehicle) return;
 
     try {
-      const response = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+      const response = await authFetch(`/api/vehicles/${editingVehicle.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +120,7 @@ export default function VehiculosPage() {
     }
 
     try {
-      const response = await fetch(`/api/vehicles/${vehicle.id}`, {
+      const response = await authFetch(`/api/vehicles/${vehicle.id}`, {
         method: "DELETE",
       });
 
