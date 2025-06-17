@@ -99,7 +99,14 @@ export function StagesManagement() {
       const eventsResponse = await authFetch("/api/events");
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
-        setEvents(eventsData);
+        // Validación defensiva para asegurar que siempre sea un array
+        if (Array.isArray(eventsData)) {
+          setEvents(eventsData);
+        } else if (Array.isArray(eventsData.content)) {
+          setEvents(eventsData.content);
+        } else {
+          setEvents([]);
+        }
       }
       setError(null);
     } catch (err) {
@@ -131,11 +138,32 @@ export function StagesManagement() {
     loadStages(eventId);
   };
 
+  const getNextAvailableOrderNumber = (eventId: number): number => {
+    const eventStages = stages.filter((s) => s.event.id === eventId);
+    const usedNumbers = eventStages
+      .map((s) => s.orderNumber)
+      .sort((a, b) => a - b);
+
+    // Buscar el primer número disponible empezando desde 0
+    for (let i = 0; i <= usedNumbers.length; i++) {
+      if (!usedNumbers.includes(i)) {
+        return i;
+      }
+    }
+
+    // Si todos los números están ocupados, devolver el siguiente
+    return usedNumbers.length;
+  };
+
   const handleCreate = () => {
     setEditingStage(null);
+    const nextOrderNumber = selectedEventId
+      ? getNextAvailableOrderNumber(selectedEventId)
+      : 0;
     setFormData({
       eventId: selectedEventId || undefined,
       isNeutralized: false,
+      orderNumber: nextOrderNumber,
     });
     setIsDialogOpen(true);
   };
@@ -193,6 +221,23 @@ export function StagesManagement() {
       return;
     }
 
+    // Validar que el orderNumber sea único en el evento
+    if (formData.orderNumber !== undefined) {
+      const existingStage = stages.find(
+        (stage) =>
+          stage.orderNumber === formData.orderNumber &&
+          stage.event.id === formData.eventId &&
+          (!editingStage || stage.id !== editingStage.id)
+      );
+
+      if (existingStage) {
+        toast.error(
+          `Ya existe una etapa con el número de orden ${formData.orderNumber} en este evento`
+        );
+        return;
+      }
+    }
+
     try {
       const submitData = {
         name: formData.name,
@@ -218,9 +263,16 @@ export function StagesManagement() {
       });
 
       if (!response.ok) {
-        throw new Error(
-          `Error al ${editingStage ? "actualizar" : "crear"} etapa`
-        );
+        if (response.status === 400) {
+          toast.error(
+            `Ya existe una etapa con el número de orden ${formData.orderNumber} en este evento`
+          );
+        } else {
+          toast.error(
+            `Error al ${editingStage ? "actualizar" : "crear"} etapa`
+          );
+        }
+        return;
       }
 
       if (selectedEventId) {
@@ -363,7 +415,28 @@ export function StagesManagement() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="orderNumber">Número de Orden *</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="orderNumber">Número de Orden *</Label>
+                      {formData.eventId && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const nextNumber = getNextAvailableOrderNumber(
+                              formData.eventId!
+                            );
+                            setFormData({
+                              ...formData,
+                              orderNumber: nextNumber,
+                            });
+                          }}
+                          className="text-xs"
+                        >
+                          Sugerir número
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       id="orderNumber"
                       type="number"
@@ -373,18 +446,51 @@ export function StagesManagement() {
                           ? formData.orderNumber.toString()
                           : ""
                       }
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newOrderNumber =
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value);
                         setFormData({
                           ...formData,
-                          orderNumber:
-                            e.target.value === ""
-                              ? undefined
-                              : Number(e.target.value),
-                        })
-                      }
+                          orderNumber: newOrderNumber,
+                        });
+                      }}
                       placeholder="0"
                       required
+                      className={
+                        formData.orderNumber !== undefined &&
+                        formData.eventId &&
+                        stages.find(
+                          (stage) =>
+                            stage.orderNumber === formData.orderNumber &&
+                            stage.event.id === formData.eventId &&
+                            (!editingStage || stage.id !== editingStage.id)
+                        )
+                          ? "border-red-500 focus:border-red-500"
+                          : ""
+                      }
                     />
+                    {formData.orderNumber !== undefined &&
+                      formData.eventId &&
+                      stages.find(
+                        (stage) =>
+                          stage.orderNumber === formData.orderNumber &&
+                          stage.event.id === formData.eventId &&
+                          (!editingStage || stage.id !== editingStage.id)
+                      ) && (
+                        <p className="text-xs text-red-600 mt-1">
+                          ⚠️ Ya existe una etapa con este número de orden
+                        </p>
+                      )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Números usados:{" "}
+                      {stages
+                        .filter((s) => s.event.id === formData.eventId)
+                        .map((s) => s.orderNumber)
+                        .sort((a, b) => a - b)
+                        .join(", ") || "Ninguno"}
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="event">Evento *</Label>

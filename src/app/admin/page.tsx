@@ -42,7 +42,7 @@ export default function AdminPage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center w-full min-h-screen">
+      <div className="flex items-center justify-center flex-1 w-full ">
         <div className="flex flex-col items-center justify-center w-full">
           <div className="w-32 h-32 mx-auto border-b-2 rounded-full animate-spin border-primary" />
           <p className="mt-4 text-center text-muted-foreground">
@@ -130,7 +130,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-transparent/10">
+    <div className="flex flex-1 w-full bg-transparent/10">
       <div className="container px-4 py-6 mx-auto md:py-10">
         <div className="mx-auto max-w-7xl">
           {/* Header */}

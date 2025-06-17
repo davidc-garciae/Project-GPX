@@ -53,6 +53,18 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
     onSubmit(data);
   };
 
+  // Función para filtrar caracteres no válidos en SOAT
+  const handleSoatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^A-Za-z0-9\-_]/g, ""); // Solo permitir letras, números, guiones y guiones bajos
+    form.setValue("soat", value);
+  };
+
+  // Función para filtrar caracteres no válidos en placas
+  const handlePlatesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^A-Za-z0-9\-]/g, ""); // Solo permitir letras, números y guiones
+    form.setValue("plates", value);
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -83,9 +95,19 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
               <FormItem>
                 <FormLabel>SOAT</FormLabel>
                 <FormControl>
-                  <Input placeholder="Número de SOAT" {...field} />
+                  <Input
+                    placeholder="Ej: ABC123456789 (sin espacios)"
+                    {...field}
+                    className={
+                      form.formState.errors.soat ? "border-red-500" : ""
+                    }
+                    onChange={handleSoatChange}
+                  />
                 </FormControl>
                 <FormMessage />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Solo letras, números, guiones (-) y guiones bajos (_)
+                </p>
               </FormItem>
             )}
           />
@@ -97,9 +119,19 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
               <FormItem>
                 <FormLabel>Placa</FormLabel>
                 <FormControl>
-                  <Input placeholder="ABC-123" {...field} />
+                  <Input
+                    placeholder="Ej: ABC-123 (sin espacios)"
+                    {...field}
+                    className={
+                      form.formState.errors.plates ? "border-red-500" : ""
+                    }
+                    onChange={handlePlatesChange}
+                  />
                 </FormControl>
                 <FormMessage />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Solo letras, números y guiones (-)
+                </p>
               </FormItem>
             )}
           />

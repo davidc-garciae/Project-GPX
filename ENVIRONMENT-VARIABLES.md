@@ -1,4 +1,4 @@
-# 📊 Variables de Entorno por Servicio - GPX Rally Management
+# 📊 Variables de Entorno por Servicio - gpx Rally Management
 
 ## 🌐 **FRONTEND (Vercel)**
 

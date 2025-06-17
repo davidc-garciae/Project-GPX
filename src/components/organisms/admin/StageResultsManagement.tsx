@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Trophy,
-  Clock,
-  MapPin,
-  Settings,
-} from "lucide-react";
+import { Plus, Edit, Trash2, Trophy, Clock, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -144,15 +136,16 @@ export function StageResultsManagement() {
   // Definición de columnas
   const allColumns = [
     { key: "participante", label: "Participante" },
-    { key: "vehiculo", label: "Vehículo" },
     { key: "categoria", label: "Categoría" },
+    { key: "order", label: "#" },
     { key: "etapa", label: "Etapa" },
     { key: "timestamp", label: "Timestamp" },
-    { key: "penalizaciones", label: "Penalizaciones" },
+    { key: "penalizaciones", label: "Penalizaciones / Descuento" },
     { key: "acciones", label: "Acciones" },
   ];
+  // Por defecto ocultar vehículo
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    allColumns.map((col) => col.key)
+    allColumns.map((col) => col.key).filter((key) => key !== "vehiculo")
   );
 
   useEffect(() => {
@@ -218,7 +211,11 @@ export function StageResultsManagement() {
 
   const handleCreate = () => {
     setEditingResult(null);
-    setFormData({});
+    setFormData({
+      // Coordenadas por defecto de Colombia (centro aproximado)
+      latitude: 4.5709,
+      longitude: -74.2973,
+    });
     setIsDialogOpen(true);
   };
 
@@ -228,7 +225,7 @@ export function StageResultsManagement() {
     setFormData({
       stageId: result.stage.id,
       vehicleId: result.vehicle.id,
-      timestamp: new Date(result.timestamp).toISOString().slice(0, 16),
+      timestamp: new Date(result.timestamp).toISOString().slice(0, 19),
       latitude: result.latitude,
       longitude: result.longitude,
     });
@@ -289,10 +286,57 @@ export function StageResultsManagement() {
     e.preventDefault();
 
     try {
+      // Validar latitud y longitud
+      if (
+        formData.latitude &&
+        (formData.latitude < -90 || formData.latitude > 90)
+      ) {
+        toast.error("La latitud debe estar entre -90 y 90 grados");
+        return;
+      }
+
+      if (
+        formData.longitude &&
+        (formData.longitude < -180 || formData.longitude > 180)
+      ) {
+        toast.error("La longitud debe estar entre -180 y 180 grados");
+        return;
+      }
+
+      // Si no estamos editando, verificar duplicados
+      if (!editingResult && formData.stageId && formData.vehicleId) {
+        const existingResult = results.find(
+          (result) =>
+            result.stage.id === formData.stageId &&
+            result.vehicle.id === formData.vehicleId
+        );
+
+        if (existingResult) {
+          const confirmOverwrite = confirm(
+            `Ya existe un resultado para este participante en esta etapa.\n\n` +
+              `¿Desea editar el resultado existente en lugar de crear uno nuevo?`
+          );
+
+          if (confirmOverwrite) {
+            // Redirigir a edición del resultado existente
+            handleEdit(existingResult);
+            return;
+          } else {
+            return; // Cancelar creación
+          }
+        }
+      }
+
+      // Asegurar que el timestamp incluya segundos
+      let timestamp = formData.timestamp;
+      if (timestamp && timestamp.length === 16) {
+        timestamp += ":00"; // Agregar segundos si no están presentes
+      }
+
       const submitData = {
         stageId: formData.stageId,
         vehicleId: formData.vehicleId,
-        timestamp: formData.timestamp,
+        timestamp: timestamp,
         latitude: formData.latitude,
         longitude: formData.longitude,
       };
@@ -311,6 +355,16 @@ export function StageResultsManagement() {
       });
 
       if (!response.ok) {
+        // Capturar error específico de duplicados
+        if (response.status === 400) {
+          const errorMessage = response.headers.get("Error-Message");
+          if (errorMessage && errorMessage.includes("Ya existe un resultado")) {
+            toast.error(
+              "Este participante ya tiene un resultado registrado en esta etapa. Use la función de edición para modificarlo."
+            );
+            return;
+          }
+        }
         throw new Error(
           `Error al ${editingResult ? "actualizar" : "crear"} resultado`
         );
@@ -395,7 +449,33 @@ export function StageResultsManagement() {
   const formatDateTime = (timestamp: string) => {
     if (!timestamp) return "-";
     try {
-      return new Date(timestamp).toLocaleString("es-ES");
+      return new Date(timestamp).toLocaleString("es-ES", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+    } catch {
+      return timestamp;
+    }
+  };
+
+  const formatTimestampForUser = (timestamp: string) => {
+    if (!timestamp) return "-";
+    try {
+      const date = new Date(timestamp);
+      // Usar UTC para evitar conversión de zona horaria
+      const day = date.getUTCDate().toString().padStart(2, "0");
+      const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+      const year = date.getUTCFullYear();
+      const hours = date.getUTCHours().toString().padStart(2, "0");
+      const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+      const seconds = date.getUTCSeconds().toString().padStart(2, "0");
+
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     } catch {
       return timestamp;
     }
@@ -656,7 +736,8 @@ export function StageResultsManagement() {
                       <Input
                         id="timestamp"
                         type="datetime-local"
-                        value={formData.timestamp?.slice(0, 16) || ""}
+                        step="1"
+                        value={formData.timestamp?.slice(0, 19) || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
@@ -671,6 +752,8 @@ export function StageResultsManagement() {
                         id="latitude"
                         type="number"
                         step="any"
+                        min="-90"
+                        max="90"
                         value={formData.latitude || ""}
                         onChange={(e) =>
                           setFormData({
@@ -678,7 +761,11 @@ export function StageResultsManagement() {
                             latitude: Number(e.target.value),
                           })
                         }
+                        placeholder="Ej: 6.2442"
                       />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Entre -90 y 90 grados (Ej: Colombia 6.2442)
+                      </p>
                     </div>
                     <div>
                       <Label htmlFor="longitude">Longitud</Label>
@@ -686,6 +773,8 @@ export function StageResultsManagement() {
                         id="longitude"
                         type="number"
                         step="any"
+                        min="-180"
+                        max="180"
                         value={formData.longitude || ""}
                         onChange={(e) =>
                           setFormData({
@@ -693,7 +782,11 @@ export function StageResultsManagement() {
                             longitude: Number(e.target.value),
                           })
                         }
+                        placeholder="Ej: -75.5812"
                       />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Entre -180 y 180 grados (Ej: Colombia -75.5812)
+                      </p>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 py-4">
@@ -955,11 +1048,11 @@ export function StageResultsManagement() {
                       {visibleColumns.includes("participante") && (
                         <TableHead>Participante</TableHead>
                       )}
-                      {visibleColumns.includes("vehiculo") && (
-                        <TableHead>Vehículo</TableHead>
-                      )}
                       {visibleColumns.includes("categoria") && (
                         <TableHead>Categoría</TableHead>
+                      )}
+                      {visibleColumns.includes("order") && (
+                        <TableHead>#</TableHead>
                       )}
                       {visibleColumns.includes("etapa") && (
                         <TableHead>Etapa</TableHead>
@@ -968,7 +1061,7 @@ export function StageResultsManagement() {
                         <TableHead>Timestamp</TableHead>
                       )}
                       {visibleColumns.includes("penalizaciones") && (
-                        <TableHead>Penalizaciones</TableHead>
+                        <TableHead>Penalizaciones / Descuento</TableHead>
                       )}
                       {visibleColumns.includes("acciones") && (
                         <TableHead className="text-right">Acciones</TableHead>
@@ -1008,16 +1101,14 @@ export function StageResultsManagement() {
                             </div>
                           </TableCell>
                         )}
-                        {visibleColumns.includes("vehiculo") && (
-                          <TableCell>
-                            <p className="font-medium">
-                              {result.vehicle?.name || "N/A"}
-                            </p>
-                          </TableCell>
-                        )}
                         {visibleColumns.includes("categoria") && (
                           <TableCell>
                             {result.vehicle?.category?.name || "N/A"}
+                          </TableCell>
+                        )}
+                        {visibleColumns.includes("order") && (
+                          <TableCell>
+                            {result.stage?.orderNumber ?? "-"}
                           </TableCell>
                         )}
                         {visibleColumns.includes("etapa") && (
@@ -1027,34 +1118,52 @@ export function StageResultsManagement() {
                           <TableCell>
                             <div className="flex items-center">
                               <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                              {formatDateTime(result.timestamp)}
+                              {formatTimestampForUser(result.timestamp)}
                             </div>
                           </TableCell>
                         )}
                         {visibleColumns.includes("penalizaciones") && (
                           <TableCell>
-                            <div className="space-y-1">
-                              {result.penaltyWaypoint && (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  WP: {formatTime(result.penaltyWaypoint)}
-                                </Badge>
-                              )}
-                              {result.penaltySpeed && (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  Vel: {formatTime(result.penaltySpeed)}
-                                </Badge>
-                              )}
-                              {result.discountClaim && (
-                                <Badge variant="default" className="text-xs">
-                                  Desc: {formatTime(result.discountClaim)}
-                                </Badge>
-                              )}
+                            <div className="flex flex-wrap gap-1">
+                              {result.penaltyWaypoint &&
+                                result.penaltyWaypoint !== "PT0S" &&
+                                result.penaltyWaypoint !== "00:00:00" &&
+                                formatTime(result.penaltyWaypoint) !==
+                                  "00:00:00" && (
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-xs text-red-700 transition-transform duration-150 border border-red-200 shadow-sm bg-red-50 hover:bg-red-100/90 hover:scale-105"
+                                    title="Penalización por Waypoint"
+                                  >
+                                    WP: {formatTime(result.penaltyWaypoint)}
+                                  </Badge>
+                                )}
+                              {result.penaltySpeed &&
+                                result.penaltySpeed !== "PT0S" &&
+                                result.penaltySpeed !== "00:00:00" &&
+                                formatTime(result.penaltySpeed) !==
+                                  "00:00:00" && (
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-xs text-yellow-800 transition-transform duration-150 border border-yellow-200 shadow-sm bg-yellow-50 hover:bg-yellow-100/90 hover:scale-105"
+                                    title="Penalización por Velocidad"
+                                  >
+                                    Vel: {formatTime(result.penaltySpeed)}
+                                  </Badge>
+                                )}
+                              {result.discountClaim &&
+                                result.discountClaim !== "PT0S" &&
+                                result.discountClaim !== "00:00:00" &&
+                                formatTime(result.discountClaim) !==
+                                  "00:00:00" && (
+                                  <Badge
+                                    variant="default"
+                                    className="text-xs text-green-800 transition-transform duration-150 border border-green-200 shadow-sm bg-green-50 hover:bg-green-100/90 hover:scale-105"
+                                    title="Descuento aplicado"
+                                  >
+                                    Desc: {formatTime(result.discountClaim)}
+                                  </Badge>
+                                )}
                             </div>
                           </TableCell>
                         )}

@@ -56,21 +56,43 @@ export function AdminDashboard() {
           currentEventsRes.json(),
         ]);
 
+        // Validación defensiva para asegurar que siempre sean arrays
+        const eventsArray = Array.isArray(events)
+          ? events
+          : Array.isArray(events.content)
+          ? events.content
+          : [];
+        const usersArray = Array.isArray(users)
+          ? users
+          : Array.isArray(users.content)
+          ? users.content
+          : [];
+        const categoriesArray = Array.isArray(categories)
+          ? categories
+          : Array.isArray(categories.content)
+          ? categories.content
+          : [];
+        const currentEventsArray = Array.isArray(currentEvents)
+          ? currentEvents
+          : Array.isArray(currentEvents.content)
+          ? currentEvents.content
+          : [];
+
         // Calcular estadísticas
         const now = new Date();
-        const pastEvents = events.filter(
+        const pastEvents = eventsArray.filter(
           (event: any) => new Date(event.endDate) < now
         );
-        const recentEvents = events.slice(-3); // Últimos 3 eventos
+        const recentEvents = eventsArray.slice(-3); // Últimos 3 eventos
 
         setStats({
-          totalEvents: events.length,
-          totalUsers: users.length,
-          totalCategories: categories.length,
+          totalEvents: eventsArray.length,
+          totalUsers: usersArray.length,
+          totalCategories: categoriesArray.length,
           totalResults: 0, // Se puede agregar cuando tengamos el endpoint
-          currentEvents: currentEvents.length,
+          currentEvents: currentEventsArray.length,
           pastEvents: pastEvents.length,
-          recentUsers: users.slice(-5), // Últimos 5 usuarios por ID (más recientes)
+          recentUsers: usersArray.slice(-5), // Últimos 5 usuarios por ID (más recientes)
           recentEvents,
         });
       } catch (err) {

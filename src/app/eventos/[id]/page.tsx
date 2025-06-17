@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { authFetch } from "@/utils/authFetch";
 import { EventsOverview } from "@/components/organisms/EventsOverview";
 import { EventDetailRow } from "@/components/organisms/EventDetailRow";
 import { EventInfoCard } from "@/components/molecules/EventInfoCard";
@@ -78,6 +79,10 @@ export default function EventoPage() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") || "info";
 
+  // URL base del backend
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+
   const [event, setEvent] = useState<any>(null);
   const [stages, setStages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +91,7 @@ export default function EventoPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [isUserRegistered, setIsUserRegistered] = useState(false);
   const [loadingInscription, setLoadingInscription] = useState(false);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
   const [participantsCount, setParticipantsCount] = useState(0);
   const [participants, setParticipants] = useState<any[]>([]);
 
@@ -93,64 +99,95 @@ export default function EventoPage() {
   useEffect(() => {
     const loadEventData = async () => {
       setLoading(true);
+      console.log(`🔍 Cargando datos del evento ${eventId}...`);
+
       try {
         // Cargar evento
-        const eventRes = await fetch(`/api/events/${eventId}`);
+        const eventUrl = `${backendUrl}/api/events/${eventId}`;
+        console.log(`📡 Petición evento: ${eventUrl}`);
+
+        const eventRes = await fetch(eventUrl);
+        console.log(`📊 Respuesta evento:`, {
+          status: eventRes.status,
+          ok: eventRes.ok,
+        });
+
         if (eventRes.ok) {
           const eventData = await eventRes.json();
+          console.log(`✅ Evento cargado:`, eventData);
           setEvent(eventData);
         } else {
           console.error(
-            "Error cargando evento:",
-            eventRes.status,
-            eventRes.statusText
+            `❌ Error cargando evento: ${eventRes.status} ${eventRes.statusText}`
           );
         }
 
         // Cargar etapas
-        const stagesRes = await fetch(`/api/stages/byevent/${eventId}`);
+        const stagesUrl = `${backendUrl}/api/stages/byevent/${eventId}`;
+        console.log(`📡 Petición etapas: ${stagesUrl}`);
+
+        const stagesRes = await fetch(stagesUrl);
+        console.log(`📊 Respuesta etapas:`, {
+          status: stagesRes.status,
+          ok: stagesRes.ok,
+        });
+
         if (stagesRes.ok) {
           const stagesData = await stagesRes.json();
+          console.log(`✅ Etapas cargadas:`, stagesData);
           setStages(stagesData);
         } else {
           console.error(
-            "Error cargando etapas:",
-            stagesRes.status,
-            stagesRes.statusText
+            `❌ Error cargando etapas: ${stagesRes.status} ${stagesRes.statusText}`
           );
         }
 
         // Cargar participantes para el conteo
-        const participantsRes = await fetch(
-          `/api/event-vehicles/byevent/${eventId}`
-        );
+        const participantsUrl = `${backendUrl}/api/event-vehicles/byevent/${eventId}`;
+        console.log(`📡 Petición participantes: ${participantsUrl}`);
+
+        const participantsRes = await fetch(participantsUrl);
+        console.log(`📊 Respuesta participantes:`, {
+          status: participantsRes.status,
+          ok: participantsRes.ok,
+        });
+
         if (participantsRes.ok) {
           const participantsData = await participantsRes.json();
+          console.log(`✅ Participantes cargados:`, participantsData);
           setParticipantsCount(participantsData.length);
         } else {
           console.error(
-            "Error cargando participantes:",
-            participantsRes.status,
-            participantsRes.statusText
+            `❌ Error cargando participantes: ${participantsRes.status} ${participantsRes.statusText}`
           );
         }
 
         // Cargar participantes detallados para la tabla
-        const participantsDetailRes = await fetch(
-          `/api/event-vehicles/participants/${eventId}`
+        const participantsDetailUrl = `${backendUrl}/api/event-vehicles/participants/${eventId}`;
+        console.log(
+          `📡 Petición detalles participantes: ${participantsDetailUrl}`
         );
+
+        const participantsDetailRes = await fetch(participantsDetailUrl);
+        console.log(`📊 Respuesta detalles participantes:`, {
+          status: participantsDetailRes.status,
+          ok: participantsDetailRes.ok,
+        });
+
         if (participantsDetailRes.ok) {
           const participantsDetailData = await participantsDetailRes.json();
+          console.log(
+            `✅ Detalles participantes cargados:`,
+            participantsDetailData
+          );
           setParticipants(participantsDetailData);
         } else {
           console.error(
-            "Error cargando detalles de participantes:",
-            participantsDetailRes.status,
-            participantsDetailRes.statusText
+            `❌ Error cargando detalles participantes: ${participantsDetailRes.status} ${participantsDetailRes.statusText}`
           );
         }
       } catch (error) {
-        console.error("Error cargando datos del evento:", error);
+        console.error("💥 Error cargando datos del evento:", error);
       } finally {
         setLoading(false);
       }
@@ -165,16 +202,30 @@ export default function EventoPage() {
       if (!user?.id || !eventId) return;
 
       try {
-        const response = await fetch(`/api/event-vehicles/byevent/${eventId}`);
+        console.log(
+          `🔍 Verificando inscripción del usuario ${user.id} en evento ${eventId}...`
+        );
+        const registrationUrl = `${backendUrl}/api/event-vehicles/byevent/${eventId}`;
+        console.log(`📡 Petición verificación inscripción: ${registrationUrl}`);
+
+        const response = await fetch(registrationUrl);
+        console.log(`📊 Respuesta verificación inscripción:`, {
+          status: response.status,
+          ok: response.ok,
+        });
+
         if (response.ok) {
           const eventVehicles = await response.json();
+          console.log(`✅ Event vehicles obtenidos:`, eventVehicles);
+
           const userRegistration = eventVehicles.find(
             (ev: any) => ev.vehicleId?.user?.id === user.id
           );
+          console.log(`🎯 Usuario inscrito:`, !!userRegistration);
           setIsUserRegistered(!!userRegistration);
         }
       } catch (error) {
-        console.error("Error verificando inscripción:", error);
+        console.error("💥 Error verificando inscripción:", error);
       }
     };
 
@@ -183,38 +234,83 @@ export default function EventoPage() {
 
   // Cargar vehículos del usuario cuando abre el modal
   const loadUserVehicles = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("⚠️ No hay usuario autenticado para cargar vehículos");
+      return;
+    }
 
+    setLoadingVehicles(true);
     try {
-      const response = await fetch(`/api/vehicles/byuser/${user.id}`);
+      console.log(`🔍 Cargando vehículos del usuario ${user.id}...`);
+
+      const response = await authFetch(`/api/vehicles/byuser/${user.id}`);
+      console.log(`📊 Respuesta vehículos del usuario:`, {
+        status: response.status,
+        ok: response.ok,
+      });
+
       if (response.ok) {
         const vehicles = await response.json();
+        console.log(`✅ Vehículos del usuario cargados:`, vehicles);
+        console.log(`📈 Número de vehículos: ${vehicles.length}`);
         setUserVehicles(vehicles);
+
+        if (vehicles.length === 0) {
+          console.log("⚠️ El usuario no tiene vehículos registrados");
+          toast.info("No tienes vehículos registrados. Registra uno primero.");
+        }
+      } else {
+        console.error(
+          `❌ Error cargando vehículos: ${response.status} ${response.statusText}`
+        );
+        toast.error("No se pudieron cargar los vehículos");
       }
     } catch (error) {
-      console.error("Error cargando vehículos:", error);
-      toast.error("No se pudieron cargar los vehículos");
+      console.error("💥 Error cargando vehículos:", error);
+      toast.error("Error de conexión al cargar vehículos");
+    } finally {
+      setLoadingVehicles(false);
     }
   };
 
   // Manejar inscripción
   const handleInscription = async () => {
-    if (!selectedVehicleId || !user?.id) return;
+    if (!selectedVehicleId || !user?.id) {
+      console.log("⚠️ Faltan datos para inscripción:", {
+        selectedVehicleId,
+        userId: user?.id,
+      });
+      return;
+    }
 
     setLoadingInscription(true);
+    console.log(
+      `🔍 Iniciando inscripción: vehículo ${selectedVehicleId} en evento ${eventId}...`
+    );
+
     try {
-      const response = await fetch("/api/event-vehicles", {
+      const inscriptionData = {
+        event: { id: eventId },
+        vehicleId: { id: Number(selectedVehicleId) },
+      };
+      console.log(`📤 Datos de inscripción:`, inscriptionData);
+
+      const response = await authFetch("/api/event-vehicles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          event: { id: eventId },
-          vehicleId: { id: Number(selectedVehicleId) },
-        }),
+        body: JSON.stringify(inscriptionData),
+      });
+
+      console.log(`📊 Respuesta inscripción:`, {
+        status: response.status,
+        ok: response.ok,
       });
 
       if (response.ok) {
+        const responseData = await response.json();
+        console.log(`✅ Inscripción exitosa:`, responseData);
         toast.success("¡Inscripción realizada exitosamente!");
         setIsInscriptionModalOpen(false);
         setSelectedVehicleId("");
@@ -224,6 +320,7 @@ export default function EventoPage() {
         // Error de permisos - obtener mensaje del backend
         try {
           const errorData = await response.json();
+          console.log(`❌ Error 403:`, errorData);
           toast.error(
             errorData.message ||
               "No tienes permisos para inscribir este vehículo"
@@ -234,23 +331,37 @@ export default function EventoPage() {
       } else if (response.status === 409) {
         // Usuario ya inscrito
         const errorData = await response.json();
+        console.log(`❌ Error 409:`, errorData);
         toast.error(errorData.message || "Ya estás inscrito en este evento");
         setIsInscriptionModalOpen(false);
         setIsUserRegistered(true);
       } else if (response.status === 404) {
         // Vehículo no encontrado
         const errorData = await response.json();
+        console.log(`❌ Error 404:`, errorData);
         toast.error(errorData.message || "El vehículo seleccionado no existe");
+      } else if (response.status === 400) {
+        // Error de validación (reglas de negocio)
+        try {
+          const errorData = await response.json();
+          console.log(`❌ Error 400 (Validación):`, errorData);
+          toast.error(
+            errorData.message || "Error de validación en la inscripción"
+          );
+        } catch {
+          toast.error("Error de validación en la inscripción");
+        }
       } else {
         try {
           const errorData = await response.json();
+          console.log(`❌ Error ${response.status}:`, errorData);
           toast.error(errorData.message || "Error al realizar la inscripción");
         } catch {
           toast.error("Error al realizar la inscripción");
         }
       }
     } catch (error) {
-      console.error("Error en inscripción:", error);
+      console.error("💥 Error en inscripción:", error);
       toast.error("Error al procesar la inscripción");
     } finally {
       setLoadingInscription(false);
@@ -259,6 +370,7 @@ export default function EventoPage() {
 
   // Abrir modal de inscripción
   const openInscriptionModal = () => {
+    console.log("🔍 Abriendo modal de inscripción...");
     loadUserVehicles();
     setIsInscriptionModalOpen(true);
   };
@@ -405,44 +517,96 @@ export default function EventoPage() {
                 Selecciona el vehículo con el que deseas participar en este
                 evento:
               </p>
-              <Select
-                value={selectedVehicleId}
-                onValueChange={setSelectedVehicleId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona un vehículo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {userVehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                      {vehicle.name} - {vehicle.plates} ({vehicle.category.name}
-                      )
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {userVehicles.length === 0 && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No tienes vehículos registrados.
-                  <a
-                    href="/vehiculos"
-                    className="ml-1 text-primary hover:underline"
+
+              {loadingVehicles ? (
+                <div className="flex items-center justify-center p-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-b-2 rounded-full animate-spin border-primary"></div>
+                    <span className="text-sm text-muted-foreground">
+                      Cargando vehículos...
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Select
+                    value={selectedVehicleId}
+                    onValueChange={setSelectedVehicleId}
+                    disabled={userVehicles.length === 0}
                   >
-                    Registra uno aquí
-                  </a>
-                </p>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          userVehicles.length === 0
+                            ? "No hay vehículos disponibles"
+                            : "Selecciona un vehículo"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userVehicles.map((vehicle) => (
+                        <SelectItem
+                          key={vehicle.id}
+                          value={vehicle.id.toString()}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">{vehicle.name}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {vehicle.category.name}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {userVehicles.length === 0 && !loadingVehicles && (
+                    <div className="p-4 mt-2 border rounded-lg bg-muted/50">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>No tienes vehículos registrados.</strong>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Para participar en eventos necesitas registrar al menos
+                        un vehículo.
+                      </p>
+                      <a
+                        href="/vehiculos"
+                        className="inline-block mt-2 text-sm text-primary hover:underline"
+                      >
+                        → Registrar vehículo aquí
+                      </a>
+                    </div>
+                  )}
+
+                  {userVehicles.length > 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      💡 Tienes {userVehicles.length} vehículo
+                      {userVehicles.length !== 1 ? "s" : ""} disponible
+                      {userVehicles.length !== 1 ? "s" : ""} para inscripción.
+                    </p>
+                  )}
+                </>
               )}
             </div>
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsInscriptionModalOpen(false)}
+                onClick={() => {
+                  setIsInscriptionModalOpen(false);
+                  setSelectedVehicleId("");
+                  setUserVehicles([]);
+                }}
               >
                 Cancelar
               </Button>
               <Button
                 onClick={handleInscription}
-                disabled={!selectedVehicleId || loadingInscription}
+                disabled={
+                  !selectedVehicleId ||
+                  loadingInscription ||
+                  userVehicles.length === 0
+                }
               >
                 {loadingInscription
                   ? "Inscribiendo..."

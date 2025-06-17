@@ -43,13 +43,49 @@ export default function VehiculosPage() {
   // Cargar categorías
   const loadCategories = async () => {
     try {
-      const response = await fetch("/api/categories");
+      console.log("🔍 Iniciando carga de categorías...");
+
+      // Usar la URL completa del backend como en authFetch
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const fullUrl = `${backendUrl}/api/categories`;
+
+      console.log(`📡 Haciendo petición a: ${fullUrl}`);
+
+      const response = await fetch(fullUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log(`📊 Respuesta recibida:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ Categorías cargadas exitosamente:`, data);
+        console.log(`📈 Número de categorías: ${data.length}`);
         setCategories(data);
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ Error loading categories:`, {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        });
+        toast.error(
+          `Error al cargar categorías: ${response.status} ${response.statusText}`
+        );
       }
     } catch (error) {
-      console.error("Error cargando categorías:", error);
+      console.error("💥 Excepción al cargar categorías:", error);
+      toast.error(`Error de conexión: ${error.message}`);
     }
   };
 
@@ -58,15 +94,20 @@ export default function VehiculosPage() {
     if (!user?.id) return;
 
     try {
+      console.log("🚀 Creando vehículo con datos:", data);
+
       const response = await authFetch("/api/vehicles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...data,
-          userId: user.id,
-        }),
+        body: JSON.stringify(data),
+      });
+
+      console.log("📡 Respuesta del servidor:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
       });
 
       if (response.ok) {
@@ -74,11 +115,31 @@ export default function VehiculosPage() {
         setIsModalOpen(false);
         loadVehicles();
       } else {
-        throw new Error("Error al crear vehículo");
+        let errorMessage = "Error al crear vehículo";
+        try {
+          const errorData = await response.json();
+          console.log("❌ Error del backend:", errorData);
+
+          // Manejar errores de validación específicos
+          if (errorData.fieldErrors) {
+            const fieldErrorMessages = Object.entries(errorData.fieldErrors)
+              .map(([field, message]) => `${field}: ${message}`)
+              .join(", ");
+            errorMessage = `Errores de validación: ${fieldErrorMessages}`;
+          } else {
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          }
+        } catch (parseError) {
+          console.log("⚠️ No se pudo parsear la respuesta de error");
+          errorMessage = `Error ${response.status}: ${response.statusText}`;
+        }
+
+        toast.error(errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error("Error creando vehículo:", error);
-      toast.error("No se pudo crear el vehículo");
+      console.error("💥 Error creando vehículo:", error);
+      // No mostrar toast aquí porque ya se mostró arriba
     }
   };
 

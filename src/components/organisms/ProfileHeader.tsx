@@ -5,16 +5,14 @@ import { ProfilePhotoManager } from "@/components/molecules/ProfilePhotoManager"
 
 interface ProfileHeaderProps {
   user?: User;
-  uploading?: boolean;
-  onFileUpload: (file: File) => void;
+  updating?: boolean;
   onUrlChange: (url: string) => void;
   onRemovePhoto: () => void;
 }
 
 export function ProfileHeader({
   user,
-  uploading = false,
-  onFileUpload,
+  updating = false,
   onUrlChange,
   onRemovePhoto,
 }: ProfileHeaderProps) {
@@ -43,10 +41,9 @@ export function ProfileHeader({
         <div className="ml-auto">
           <ProfilePhotoManager
             hasPhoto={!!user?.picture}
-            onFileUpload={onFileUpload}
             onUrlChange={onUrlChange}
             onRemove={onRemovePhoto}
-            uploading={uploading}
+            updating={updating}
           />
         </div>
       </div>

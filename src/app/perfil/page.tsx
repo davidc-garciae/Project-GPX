@@ -41,7 +41,7 @@ export default function PerfilPage() {
   } = useAuth();
   const [fullUserData, setFullUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("personal");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -115,62 +115,6 @@ export default function PerfilPage() {
       throw err;
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Función para subir archivos
-  const uploadFile = async (file: File, fieldName: string) => {
-    try {
-      if (!authUser?.id) {
-        throw new Error(
-          "No se puede subir archivo: ID de usuario no disponible"
-        );
-      }
-      const formData = new FormData();
-      const userBlob = new Blob([JSON.stringify(fullUserData || authUser)], {
-        type: "application/json",
-      });
-      formData.append("user", userBlob);
-      if (fieldName === "picture") {
-        formData.append("profilePhoto", file);
-      } else if (fieldName === "insurance") {
-        formData.append("insurance", file);
-      } else {
-        throw new Error(`Tipo de archivo no soportado: ${fieldName}`);
-      }
-      const response = await authFetch(`/api/users/${authUser.id}`, {
-        method: "PUT",
-        body: formData,
-      });
-      if (!response.ok) {
-        // Intentar parsear la respuesta de error del backend
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: "Error al subir el archivo" };
-        }
-
-        // Manejar diferentes tipos de errores
-        if (errorData.type === "VALIDATION_ERROR") {
-          throw new ValidationError(
-            errorData.error || "Error de validación en el archivo"
-          );
-        } else {
-          throw new Error(errorData.error || "Error al subir el archivo");
-        }
-      }
-      const updatedUser = await response.json();
-      setFullUserData(updatedUser);
-      await refreshUserData();
-      return updatedUser;
-    } catch (err) {
-      if (err instanceof ValidationError) {
-        // No establecer error de estado para errores de validación
-        throw err;
-      }
-      setError(err instanceof Error ? err.message : "Error desconocido");
-      throw err;
     }
   };
 
@@ -314,45 +258,20 @@ export default function PerfilPage() {
     }
   };
 
-  const handleFileUpload = async (file: File, fieldName: string) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      await uploadFile(file, fieldName);
-      toast.success("Archivo subido exitosamente");
-    } catch (error) {
-      if (error instanceof ValidationError) {
-        // Para errores de validación, mostrar warning con información específica
-        toast.warning(error.message, {
-          description: "Verifica que el archivo cumpla con los requisitos",
-          duration: 6000,
-        });
-      } else {
-        toast.error("Error al subir el archivo");
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleUrlChange = async (url: string) => {
+  // ========== FUNCIONES ACTUALIZADAS: Solo URLs ==========
+  const handlePictureUrlChange = async (url: string) => {
     if (!authUser?.id) return;
-    setUploading(true);
+    setUpdating(true);
     try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const token = getAuthToken();
-      const fullUrl = `${backendUrl}/api/users/${authUser.id}/picture`;
-      const response = await fetch(fullUrl, {
+      const response = await authFetch(`/api/users/${authUser.id}/picture`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ pictureUrl: url }),
       });
+
       if (!response.ok) {
-        // Intentar parsear la respuesta de error del backend
         let errorData;
         try {
           errorData = await response.json();
@@ -381,28 +300,23 @@ export default function PerfilPage() {
         toast.error("Error al actualizar la foto");
       }
     } finally {
-      setUploading(false);
+      setUpdating(false);
     }
   };
 
   const handleRemovePhoto = async () => {
     if (!authUser?.id) return;
-    setUploading(true);
+    setUpdating(true);
     try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const token = getAuthToken();
-      const fullUrl = `${backendUrl}/api/users/${authUser.id}/picture`;
-      const response = await fetch(fullUrl, {
+      const response = await authFetch(`/api/users/${authUser.id}/picture`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ pictureUrl: null }),
       });
+
       if (!response.ok) {
-        // Intentar parsear la respuesta de error del backend
         let errorData;
         try {
           errorData = await response.json();
@@ -429,26 +343,67 @@ export default function PerfilPage() {
         toast.error("Error al eliminar la foto");
       }
     } finally {
-      setUploading(false);
+      setUpdating(false);
+    }
+  };
+
+  const handleInsuranceUrlChange = async (url: string) => {
+    if (!authUser?.id) return;
+    setUpdating(true);
+    try {
+      const response = await authFetch(`/api/users/${authUser.id}/insurance`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ insuranceUrl: url }),
+      });
+
+      if (!response.ok) {
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: "Error al actualizar el documento de seguro" };
+        }
+
+        if (errorData.type === "VALIDATION_ERROR") {
+          throw new ValidationError(
+            errorData.error || "Error de validación en el documento"
+          );
+        } else {
+          throw new Error(
+            errorData.error || "Error al actualizar el documento de seguro"
+          );
+        }
+      }
+      await loadUserProfile(authUser.id);
+      await refreshUserData();
+      toast.success("Documento de seguro actualizado exitosamente");
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        toast.warning(error.message, {
+          description: "Verifica que la URL del documento sea válida",
+          duration: 6000,
+        });
+      } else {
+        toast.error("Error al actualizar el documento de seguro");
+      }
+    } finally {
+      setUpdating(false);
     }
   };
 
   const handleViewInsurance = () => {
     if (displayUser?.insurance) {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const fileUrl = `${backendUrl}/${displayUser.insurance}`;
-      window.open(fileUrl, "_blank");
+      window.open(displayUser.insurance, "_blank");
     }
   };
 
   const handleDownloadInsurance = () => {
     if (displayUser?.insurance) {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const fileUrl = `${backendUrl}/${displayUser.insurance}`;
       const link = document.createElement("a");
-      link.href = fileUrl;
+      link.href = displayUser.insurance;
       link.download = `seguro_medico_${displayUser.firstName}_${displayUser.lastName}`;
       document.body.appendChild(link);
       link.click();
@@ -458,22 +413,13 @@ export default function PerfilPage() {
 
   const handleRemoveInsurance = async () => {
     if (!authUser?.id) return;
-    setUploading(true);
+    setUpdating(true);
     try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-      const token = getAuthToken();
-      const response = await fetch(
-        `${backendUrl}/api/users/${authUser.id}/insurance`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await authFetch(`/api/users/${authUser.id}/insurance`, {
+        method: "DELETE",
+      });
+
       if (!response.ok) {
-        // Intentar parsear la respuesta de error del backend
         let errorData;
         try {
           errorData = await response.json();
@@ -502,7 +448,7 @@ export default function PerfilPage() {
         toast.error("Error al eliminar el documento de seguro");
       }
     } finally {
-      setUploading(false);
+      setUpdating(false);
     }
   };
 
@@ -619,9 +565,8 @@ export default function PerfilPage() {
       <Card className="w-full px-10 py-6 max-w-7xl bg-card/90">
         <ProfileHeader
           user={displayUser}
-          uploading={uploading}
-          onFileUpload={(file) => handleFileUpload(file, "picture")}
-          onUrlChange={handleUrlChange}
+          updating={updating}
+          onUrlChange={handlePictureUrlChange}
           onRemovePhoto={handleRemovePhoto}
         />
 
@@ -649,10 +594,8 @@ export default function PerfilPage() {
                     activeSection={activeSection}
                     form={form}
                     user={displayUser}
-                    uploading={uploading}
-                    onInsuranceUpload={(file) =>
-                      handleFileUpload(file, "insurance")
-                    }
+                    updating={updating}
+                    onInsuranceUrlChange={handleInsuranceUrlChange}
                     onInsuranceView={handleViewInsurance}
                     onInsuranceDownload={handleDownloadInsurance}
                     onInsuranceRemove={handleRemoveInsurance}

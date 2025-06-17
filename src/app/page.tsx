@@ -28,56 +28,143 @@ export default function Page() {
   const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
+  // URL base del backend
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+
   // Función para cargar las categorías de un evento
   const loadEventCategories = async (eventId: number) => {
     setLoadingCategories(true);
     try {
-      const response = await fetch(`/api/event-categories/byevent/${eventId}`);
+      console.log(`🔍 Cargando categorías para evento ${eventId}...`);
+      const fullUrl = `${backendUrl}/api/event-categories/byevent/${eventId}`;
+      console.log(`📡 Petición a: ${fullUrl}`);
+
+      const response = await fetch(fullUrl);
+      console.log(`📊 Respuesta categorías:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ Categorías cargadas:`, data);
         setEventCategories(data || []);
       } else {
+        console.error(
+          `❌ Error cargando categorías: ${response.status} ${response.statusText}`
+        );
         setEventCategories([]);
       }
     } catch (error) {
-      console.error("Error cargando categorías del evento:", error);
+      console.error("💥 Error cargando categorías del evento:", error);
       setEventCategories([]);
     } finally {
       setLoadingCategories(false);
     }
   };
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      fetch("/api/events/current")
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) {
-            const event = data[0] || null;
-            setMainEvent(event);
-            if (event?.id) {
-              loadEventCategories(event.id);
-            }
-          } else if (data && typeof data === "object") {
-            setMainEvent(data);
-            if (data.id) {
-              loadEventCategories(data.id);
-            }
-          } else {
-            setMainEvent(null);
+  // Función para cargar el evento actual
+  const loadCurrentEvent = async () => {
+    try {
+      console.log("🔍 Cargando evento actual...");
+      const fullUrl = `${backendUrl}/api/events/current`;
+      console.log(`📡 Petición a: ${fullUrl}`);
+
+      const response = await fetch(fullUrl);
+      console.log(`📊 Respuesta evento actual:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Evento actual cargado:`, data);
+
+        if (Array.isArray(data)) {
+          const event = data[0] || null;
+          setMainEvent(event);
+          if (event?.id) {
+            await loadEventCategories(event.id);
           }
-        })
-        .catch(() => setMainEvent(null)),
-      fetch("/api/events/past")
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) setWinners(data.slice(0, 3));
-          else if (data && typeof data === "object") setWinners([data]);
-          else setWinners([]);
-        })
-        .catch(() => setWinners([])),
-    ]).finally(() => setLoading(false));
+        } else if (data && typeof data === "object") {
+          setMainEvent(data);
+          if (data.id) {
+            await loadEventCategories(data.id);
+          }
+        } else {
+          console.log("⚠️ No hay evento actual disponible");
+          setMainEvent(null);
+        }
+      } else {
+        console.error(
+          `❌ Error cargando evento actual: ${response.status} ${response.statusText}`
+        );
+        setMainEvent(null);
+      }
+    } catch (error) {
+      console.error("💥 Error cargando evento actual:", error);
+      setMainEvent(null);
+    }
+  };
+
+  // Función para cargar eventos pasados (ganadores)
+  const loadPastEvents = async () => {
+    try {
+      console.log("🔍 Cargando eventos pasados...");
+      const fullUrl = `${backendUrl}/api/events/past`;
+      console.log(`📡 Petición a: ${fullUrl}`);
+
+      const response = await fetch(fullUrl);
+      console.log(`📊 Respuesta eventos pasados:`, {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Eventos pasados cargados:`, data);
+
+        if (Array.isArray(data)) {
+          setWinners(data.slice(0, 3));
+        } else if (data && typeof data === "object") {
+          setWinners([data]);
+        } else {
+          console.log("⚠️ No hay eventos pasados disponibles");
+          setWinners([]);
+        }
+      } else {
+        console.error(
+          `❌ Error cargando eventos pasados: ${response.status} ${response.statusText}`
+        );
+        setWinners([]);
+      }
+    } catch (error) {
+      console.error("💥 Error cargando eventos pasados:", error);
+      setWinners([]);
+    }
+  };
+
+  useEffect(() => {
+    const loadAllData = async () => {
+      console.log("🚀 Iniciando carga de datos de la página principal...");
+      setLoading(true);
+
+      try {
+        // Cargar datos en paralelo
+        await Promise.all([loadCurrentEvent(), loadPastEvents()]);
+        console.log("✅ Todos los datos cargados exitosamente");
+      } catch (error) {
+        console.error("💥 Error cargando datos:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllData();
   }, []);
 
   return (

@@ -66,7 +66,7 @@ export function LoginForm({
           <div className="text-center">
             <h2 className="text-xl font-bold">Iniciar sesión</h2>
             <p className="text-muted-foreground">
-              ¡Bienvenido/a a tu portal de competencias GPX!
+              ¡Bienvenido/a a tu portal de competencias gpx!
             </p>
           </div>
           {/* Botón de Google */}

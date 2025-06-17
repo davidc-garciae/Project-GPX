@@ -110,7 +110,11 @@ export function UsersManagement() {
     { key: "acciones", label: "Acciones" },
   ];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    allColumns.map((col) => col.key)
+    allColumns
+      .map((col) => col.key)
+      .filter(
+        (key) => !["identificacion", "equipo", "rol", "tipo"].includes(key)
+      )
   );
 
   useEffect(() => {

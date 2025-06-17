@@ -9,11 +9,9 @@ import {
   MapPin,
   Users,
   Settings,
-  Upload,
   Link,
   X,
   Eye,
-  Download,
   Image,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -51,12 +49,6 @@ import {
   PopoverTrigger,
 } from "@/components/atoms/popover";
 import { Checkbox } from "@/components/atoms/checkbox";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/atoms/tabs";
 
 interface Event {
   id: number;
@@ -92,9 +84,12 @@ export function EventsManagement() {
   const [events, setEvents] = useState<Event[]>([]);
   const [eventCategories, setEventCategories] = useState<EventCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [eventStages, setEventStages] = useState<{ [eventId: number]: number }>(
+    {}
+  );
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
@@ -109,14 +104,20 @@ export function EventsManagement() {
     { key: "evento", label: "Evento" },
     { key: "fechaInicio", label: "Fecha Inicio" },
     { key: "fechaFin", label: "Fecha Fin" },
+    { key: "stages", label: "Etapas" },
     { key: "ubicacion", label: "Ubicación" },
     { key: "categorias", label: "Categorías" },
     { key: "estado", label: "Estado" },
     { key: "acciones", label: "Acciones" },
   ];
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(
-    allColumns.map((col) => col.key)
-  );
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([
+    "evento",
+    "fechaInicio",
+    "fechaFin",
+    "stages",
+    "estado",
+    "acciones",
+  ]);
 
   useEffect(() => {
     loadEvents();
@@ -132,7 +133,20 @@ export function EventsManagement() {
         throw new Error("Error al cargar eventos");
       }
       const eventsData = await response.json();
-      setEvents(eventsData);
+      // Validación defensiva para asegurar que siempre sea un array
+      if (Array.isArray(eventsData)) {
+        setEvents(eventsData);
+        loadEventStages(eventsData);
+      } else if (Array.isArray(eventsData.events)) {
+        setEvents(eventsData.events);
+        loadEventStages(eventsData.events);
+      } else if (Array.isArray(eventsData.content)) {
+        setEvents(eventsData.content);
+        loadEventStages(eventsData.content);
+      } else {
+        setEvents([]);
+        setError("La respuesta de eventos no es válida");
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -172,6 +186,40 @@ export function EventsManagement() {
       }
     } catch (err) {
       console.error("Error al cargar categorías:", err);
+    }
+  };
+
+  const loadEventStages = async (eventsList: Event[]) => {
+    try {
+      const stagesCount: { [eventId: number]: number } = {};
+
+      // Cargar stages para cada evento
+      await Promise.all(
+        eventsList.map(async (event) => {
+          try {
+            const response = await authFetch(`/api/stages/byevent/${event.id}`);
+            if (response.ok) {
+              const stagesData = await response.json();
+              // Validación defensiva similar a StagesManagement
+              if (Array.isArray(stagesData)) {
+                stagesCount[event.id] = stagesData.length;
+              } else if (Array.isArray(stagesData.content)) {
+                stagesCount[event.id] = stagesData.content.length;
+              } else {
+                stagesCount[event.id] = 0;
+              }
+            } else {
+              stagesCount[event.id] = 0;
+            }
+          } catch {
+            stagesCount[event.id] = 0;
+          }
+        })
+      );
+
+      setEventStages(stagesCount);
+    } catch (err) {
+      console.error("Error al cargar stages de eventos:", err);
     }
   };
 
@@ -259,13 +307,48 @@ export function EventsManagement() {
       });
 
       if (!response.ok) {
-        throw new Error("Error al eliminar evento");
+        // Intentar obtener el mensaje de error del backend
+        let errorMessage = "Error al eliminar evento";
+        try {
+          const errorData = await response.json();
+          if (errorData.message || errorData.error) {
+            const backendMessage = errorData.message || errorData.error;
+
+            // Detectar errores de restricción de clave foránea (dependencias)
+            if (
+              backendMessage.includes("constraint") ||
+              backendMessage.includes("foreign key") ||
+              backendMessage.includes("referenced") ||
+              backendMessage.includes("event_category") ||
+              backendMessage.includes("stage") ||
+              backendMessage.includes("batch")
+            ) {
+              errorMessage =
+                "❌ No se puede eliminar este evento porque tiene información asociada (etapas, categorías o participantes). Primero elimina las etapas y categorías del evento, luego intenta nuevamente.";
+            } else {
+              errorMessage = backendMessage;
+            }
+          }
+        } catch {
+          // Si no se puede parsear la respuesta, usar mensaje genérico
+          if (response.status === 409) {
+            errorMessage =
+              "❌ No se puede eliminar este evento porque tiene información asociada. Primero elimina las etapas y categorías del evento.";
+          } else if (response.status === 403) {
+            errorMessage = "🚫 No tienes permisos para eliminar este evento.";
+          } else if (response.status === 404) {
+            errorMessage = "❓ El evento no existe o ya fue eliminado.";
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       await loadEvents();
       toast.success("Evento eliminado exitosamente");
     } catch (err) {
-      toast.error("Error al eliminar evento");
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al eliminar evento";
+      toast.error(errorMessage);
     }
   };
 
@@ -314,44 +397,19 @@ export function EventsManagement() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    if (!file || !selectedEventForImage) return;
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      const eventBlob = new Blob([JSON.stringify(selectedEventForImage)], {
-        type: "application/json",
-      });
-      formData.append("event", eventBlob);
-      formData.append("eventPhoto", file);
-
-      const response = await authFetch(
-        `/api/events/${selectedEventForImage.id}/picture`,
-        {
-          method: "PUT",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Error al subir la imagen");
-      }
-
-      await loadEvents();
-      setIsImageDialogOpen(false);
-      toast.success("Imagen subida exitosamente");
-    } catch (err) {
-      toast.error("Error al subir la imagen");
-    } finally {
-      setUploading(false);
-    }
-  };
-
+  // ========== NUEVA FUNCIÓN: Solo manejo de URLs ==========
   const handleUrlUpload = async () => {
     if (!imageUrl || !selectedEventForImage) return;
 
-    setUploading(true);
+    // Validación de URL en el frontend
+    if (!isValidImageUrl(imageUrl)) {
+      toast.error(
+        "URL de imagen no válida. Debe ser HTTPS y de un servicio confiable."
+      );
+      return;
+    }
+
+    setUpdating(true);
     try {
       const response = await authFetch(
         `/api/events/${selectedEventForImage.id}/picture`,
@@ -365,7 +423,8 @@ export function EventsManagement() {
       );
 
       if (!response.ok) {
-        throw new Error("Error al actualizar la imagen");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Error al actualizar la imagen");
       }
 
       await loadEvents();
@@ -373,9 +432,11 @@ export function EventsManagement() {
       setImageUrl("");
       toast.success("Imagen actualizada exitosamente");
     } catch (err) {
-      toast.error("Error al actualizar la imagen");
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al actualizar la imagen";
+      toast.error(errorMessage);
     } finally {
-      setUploading(false);
+      setUpdating(false);
     }
   };
 
@@ -386,7 +447,7 @@ export function EventsManagement() {
       return;
     }
 
-    setUploading(true);
+    setUpdating(true);
     try {
       const response = await authFetch(`/api/events/${event.id}/picture`, {
         method: "DELETE",
@@ -401,7 +462,7 @@ export function EventsManagement() {
     } catch (err) {
       toast.error("Error al eliminar la imagen");
     } finally {
-      setUploading(false);
+      setUpdating(false);
     }
   };
 
@@ -419,13 +480,53 @@ export function EventsManagement() {
     );
   };
 
+  // ========== NUEVA FUNCIÓN: Validación de URLs de imagen ==========
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url || url.trim().length === 0) return true; // Permitir vacío para eliminar imagen
+
+    // Debe ser HTTPS
+    if (!url.startsWith("https://")) return false;
+
+    // Debe contener una extensión de imagen válida o ser de servicios conocidos
+    const lowerUrl = url.toLowerCase();
+    return (
+      !!lowerUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i) ||
+      lowerUrl.includes("imgur.com") ||
+      lowerUrl.includes("cloudinary.com") ||
+      lowerUrl.includes("drive.google.com") ||
+      lowerUrl.includes("dropbox.com") ||
+      lowerUrl.includes("unsplash.com") ||
+      lowerUrl.includes("pexels.com") ||
+      lowerUrl.includes("googleusercontent.com") ||
+      lowerUrl.includes("lh3.googleusercontent.com") ||
+      lowerUrl.includes("lh4.googleusercontent.com") ||
+      lowerUrl.includes("lh5.googleusercontent.com") ||
+      lowerUrl.includes("lh6.googleusercontent.com")
+    );
+  };
+
   const formatDate = (dateString: string) => {
+    // Si el string es YYYY-MM-DD, parsear manualmente para evitar desfase por zona horaria
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split("-").map(Number);
+      // Mes en JS es 0-indexado
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString("es-ES");
+    }
+    // Si viene con hora, usar el método normal
     return new Date(dateString).toLocaleDateString("es-ES");
   };
 
   const getStatusBadge = (startDate: string, endDate: string) => {
     const eventStart = new Date(startDate);
-    const eventEnd = new Date(endDate);
+    // Ajustar eventEnd a las 23:59:59 del día de fin para que el evento esté "En Curso" todo ese día
+    let eventEnd: Date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      const [year, month, day] = endDate.split("-").map(Number);
+      eventEnd = new Date(year, month - 1, day, 23, 59, 59);
+    } else {
+      eventEnd = new Date(endDate);
+    }
     const now = new Date();
 
     if (now < eventStart) {
@@ -698,6 +799,9 @@ export function EventsManagement() {
                   {visibleColumns.includes("fechaFin") && (
                     <TableHead>Fecha de Fin</TableHead>
                   )}
+                  {visibleColumns.includes("stages") && (
+                    <TableHead>Etapas</TableHead>
+                  )}
                   {visibleColumns.includes("ubicacion") && (
                     <TableHead>Ubicación</TableHead>
                   )}
@@ -721,20 +825,21 @@ export function EventsManagement() {
                           <div className="flex items-center justify-center w-12 h-12 overflow-hidden rounded-lg bg-muted">
                             {event.picture ? (
                               <img
-                                src={
-                                  event.picture.startsWith("http")
-                                    ? event.picture
-                                    : `${
-                                        process.env.NEXT_PUBLIC_BACKEND_URL ||
-                                        "http://localhost:8080"
-                                      }/${event.picture}`
-                                }
+                                src={event.picture}
                                 alt={event.name}
                                 className="object-cover w-12 h-12 rounded-lg"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  target.nextElementSibling?.classList.remove(
+                                    "hidden"
+                                  );
+                                }}
                               />
                             ) : (
                               <Calendar className="w-6 h-6 text-muted-foreground" />
                             )}
+                            <Calendar className="hidden w-6 h-6 text-muted-foreground" />
                           </div>
                           <div>
                             <p className="font-medium">{event.name}</p>
@@ -760,6 +865,15 @@ export function EventsManagement() {
                         <div className="flex items-center">
                           <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                           {formatDate(event.endDate)}
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.includes("stages") && (
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Badge variant="outline" className="text-xs">
+                            {eventStages[event.id] || 0}
+                          </Badge>
                         </div>
                       </TableCell>
                     )}
@@ -834,7 +948,7 @@ export function EventsManagement() {
         </CardContent>
       </Card>
 
-      {/* Dialog para cambiar imagen del evento */}
+      {/* Dialog simplificado para URL de imagen del evento */}
       <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -850,23 +964,20 @@ export function EventsManagement() {
                 <Label>Imagen actual:</Label>
                 <div className="relative">
                   <img
-                    src={
-                      selectedEventForImage.picture.startsWith("http")
-                        ? selectedEventForImage.picture
-                        : `${
-                            process.env.NEXT_PUBLIC_BACKEND_URL ||
-                            "http://localhost:8080"
-                          }/${selectedEventForImage.picture}`
-                    }
+                    src={selectedEventForImage.picture}
                     alt={selectedEventForImage.name}
                     className="object-cover w-full h-32 rounded-lg"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder-image.svg";
+                    }}
                   />
                   <Button
                     variant="destructive"
                     size="sm"
                     className="absolute top-2 right-2"
                     onClick={() => handleRemoveImage(selectedEventForImage)}
-                    disabled={uploading}
+                    disabled={updating}
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -874,53 +985,33 @@ export function EventsManagement() {
               </div>
             )}
 
-            <Tabs defaultValue="upload" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
-                <TabsTrigger value="url">URL de Imagen</TabsTrigger>
-              </TabsList>
+            {/* Solo URL de imagen */}
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="image-url">URL de la imagen</Label>
+                <Input
+                  id="image-url"
+                  placeholder="https://ejemplo.com/imagen.jpg"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  disabled={updating}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Debe ser una URL HTTPS de servicios confiables (Imgur,
+                  Cloudinary, Drive, Dropbox, etc.)
+                </p>
+              </div>
+              <Button
+                onClick={handleUrlUpload}
+                disabled={!imageUrl || updating}
+                className="w-full"
+              >
+                <Link className="w-4 h-4 mr-2" />
+                {updating ? "Actualizando..." : "Actualizar Imagen"}
+              </Button>
+            </div>
 
-              <TabsContent value="upload" className="space-y-4">
-                <div>
-                  <Label htmlFor="event-image">Seleccionar imagen</Label>
-                  <Input
-                    id="event-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload(file);
-                    }}
-                    disabled={uploading}
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Formatos soportados: JPG, PNG, GIF (máx. 5MB)
-                  </p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="url" className="space-y-4">
-                <div>
-                  <Label htmlFor="image-url">URL de la imagen</Label>
-                  <Input
-                    id="image-url"
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    disabled={uploading}
-                  />
-                </div>
-                <Button
-                  onClick={handleUrlUpload}
-                  disabled={!imageUrl || uploading}
-                  className="w-full"
-                >
-                  {uploading ? "Actualizando..." : "Actualizar Imagen"}
-                </Button>
-              </TabsContent>
-            </Tabs>
-
-            {uploading && (
+            {updating && (
               <div className="flex items-center justify-center py-4">
                 <div className="w-6 h-6 border-b-2 rounded-full animate-spin border-primary" />
                 <span className="ml-2 text-sm">Procesando...</span>

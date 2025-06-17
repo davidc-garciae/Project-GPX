@@ -12,25 +12,93 @@ import { Skeleton } from "@/components/atoms/skeleton";
 export function EventsOverview() {
   const [currentEvents, setCurrentEvents] = useState<any[]>([]);
   const [pastEvents, setPastEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // URL base del backend
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
   useEffect(() => {
-    fetch("/api/events/current")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setCurrentEvents(data);
-        else if (data && typeof data === "object") setCurrentEvents([data]);
-        else setCurrentEvents([]);
-      });
-    fetch("/api/events/past")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setPastEvents(data);
-        else if (data && typeof data === "object") setPastEvents([data]);
-        else setPastEvents([]);
-      });
+    const loadEvents = async () => {
+      setLoading(true);
+      console.log("🔍 EventsOverview: Cargando eventos...");
+
+      try {
+        // Cargar eventos actuales
+        const currentUrl = `${backendUrl}/api/events/current`;
+        console.log(
+          `📡 EventsOverview: Petición eventos actuales a: ${currentUrl}`
+        );
+
+        const currentResponse = await fetch(currentUrl);
+        console.log(`📊 EventsOverview: Respuesta eventos actuales:`, {
+          status: currentResponse.status,
+          ok: currentResponse.ok,
+        });
+
+        if (currentResponse.ok) {
+          const currentData = await currentResponse.json();
+          console.log(
+            `✅ EventsOverview: Eventos actuales cargados:`,
+            currentData
+          );
+
+          if (Array.isArray(currentData)) {
+            setCurrentEvents(currentData);
+          } else if (currentData && typeof currentData === "object") {
+            setCurrentEvents([currentData]);
+          } else {
+            setCurrentEvents([]);
+          }
+        } else {
+          console.error(
+            `❌ EventsOverview: Error eventos actuales: ${currentResponse.status}`
+          );
+          setCurrentEvents([]);
+        }
+
+        // Cargar eventos pasados
+        const pastUrl = `${backendUrl}/api/events/past`;
+        console.log(
+          `📡 EventsOverview: Petición eventos pasados a: ${pastUrl}`
+        );
+
+        const pastResponse = await fetch(pastUrl);
+        console.log(`📊 EventsOverview: Respuesta eventos pasados:`, {
+          status: pastResponse.status,
+          ok: pastResponse.ok,
+        });
+
+        if (pastResponse.ok) {
+          const pastData = await pastResponse.json();
+          console.log(`✅ EventsOverview: Eventos pasados cargados:`, pastData);
+
+          if (Array.isArray(pastData)) {
+            setPastEvents(pastData);
+          } else if (pastData && typeof pastData === "object") {
+            setPastEvents([pastData]);
+          } else {
+            setPastEvents([]);
+          }
+        } else {
+          console.error(
+            `❌ EventsOverview: Error eventos pasados: ${pastResponse.status}`
+          );
+          setPastEvents([]);
+        }
+      } catch (error) {
+        console.error("💥 EventsOverview: Error cargando eventos:", error);
+        setCurrentEvents([]);
+        setPastEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvents();
   }, []);
 
-  if (!currentEvents.length && !pastEvents.length) {
+  if (loading) {
     return (
       <div className="flex flex-col flex-1 max-w-xs items-start justify-center min-h-[300px] gap-8 w-full">
         <div className="w-full">

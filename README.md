@@ -1,4 +1,4 @@
-# 🏁 GPX Rally Management System
+# 🏁 gpx Rally Management System
 
 Sistema integral de gestión de rally raids y competencias off-road desarrollado con Next.js y Spring Boot. Plataforma completa para la organización, administración y seguimiento de eventos de rally, desde la inscripción de participantes hasta la gestión de resultados y clasificaciones.
 
@@ -154,7 +154,7 @@ GOOGLE_CLIENT_SECRET=tu_google_client_secret
 
 ### Vercel (Frontend) + Render (Backend)
 
-Esta es la configuración recomendada para el despliegue del sistema GPX Rally Management.
+Esta es la configuración recomendada para el despliegue del sistema gpx Rally Management.
 
 #### 📦 Preparación del Backend (Render)
 

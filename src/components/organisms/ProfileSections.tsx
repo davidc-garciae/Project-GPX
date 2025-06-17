@@ -1,5 +1,8 @@
 import { UseFormReturn } from "react-hook-form";
+import { CalendarIcon, FileText, Eye, Download, Trash2 } from "lucide-react";
+
 import { User } from "@/types/auth.types";
+import { ProfileFormValues } from "@/types/profile.types";
 import {
   Card,
   CardContent,
@@ -24,28 +27,68 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/atoms/select";
-import { DatePickerField } from "@/components/molecules/DatePickerField";
-import { InsuranceFileManager } from "@/components/molecules/InsuranceFileManager";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/atoms/popover";
+import { Button } from "@/components/atoms/button";
+import { Calendar } from "@/components/atoms/calendar";
+import { format } from "date-fns";
+import { Badge } from "@/components/atoms/badge";
 
-import { ProfileFormValues } from "@/types/profile.types";
+// Función utilitaria simple para clases condicionales
+function cn(...classes: (string | undefined | false | null)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
 
 interface ProfileSectionsProps {
   activeSection: string;
   form: UseFormReturn<ProfileFormValues>;
   user?: User;
-  uploading?: boolean;
-  onInsuranceUpload: (file: File) => void;
+  updating?: boolean;
+  onInsuranceUrlChange: (url: string) => void;
   onInsuranceView: () => void;
   onInsuranceDownload: () => void;
   onInsuranceRemove: () => void;
+}
+
+function DatePickerField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value?: Date;
+  onChange: (date: Date | undefined) => void;
+  placeholder: string;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="w-4 h-4 mr-2" />
+          {value ? format(value, "PPP") : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar mode="single" selected={value} onSelect={onChange} />
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export function ProfileSections({
   activeSection,
   form,
   user,
-  uploading = false,
-  onInsuranceUpload,
+  updating = false,
+  onInsuranceUrlChange,
   onInsuranceView,
   onInsuranceDownload,
   onInsuranceRemove,
@@ -300,14 +343,76 @@ export function ProfileSections({
 
             <div>
               <FormLabel>Seguro Médico</FormLabel>
-              <InsuranceFileManager
-                insurance={user?.insurance}
-                onFileUpload={onInsuranceUpload}
-                onView={onInsuranceView}
-                onDownload={onInsuranceDownload}
-                onRemove={onInsuranceRemove}
-                uploading={uploading}
-              />
+              <div className="p-4 border rounded-lg bg-muted/50">
+                {/* Estado actual del seguro */}
+                {user?.insurance ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-green-600" />
+                      <Badge
+                        variant="outline"
+                        className="text-green-600 border-green-600"
+                      >
+                        Documento cargado
+                      </Badge>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onInsuranceView}
+                        disabled={updating}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onInsuranceDownload}
+                        disabled={updating}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Descargar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onInsuranceRemove}
+                        disabled={updating}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        No hay documento de seguro cargado
+                      </span>
+                    </div>
+
+                    <Input
+                      placeholder="https://drive.google.com/file/d/document-id"
+                      onChange={(e) => {
+                        if (e.target.value.trim()) {
+                          onInsuranceUrlChange(e.target.value.trim());
+                        }
+                      }}
+                      disabled={updating}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Ingresa la URL HTTPS de tu documento de seguro médico
+                      desde servicios confiables (Google Drive, Dropbox,
+                      OneDrive, etc.)
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -401,7 +506,7 @@ export function ProfileSections({
                 name="terrapirata"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Terrapirata</FormLabel>
+                    <FormLabel>Terra Pirata</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="terrapirata.com/tu_perfil"
